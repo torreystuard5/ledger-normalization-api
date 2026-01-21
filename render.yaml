@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ledger-normalization-api
+    env: docker
+    plan: starter
+    autoDeploy: true
+
+    # Health check
+    healthCheckPath: /v1/health
+
+    envVars:
+      # IMPORTANT:
+      # Set these in Render Dashboard as "Secret" values (don’t hardcode real keys in git).
+      - key: PLC_PUBLIC_ALLOW_ANON
+        value: "0"
+      - key: PLC_PUBLIC_API_KEY
+        sync: false
