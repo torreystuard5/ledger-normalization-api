@@ -19,21 +19,21 @@ from api.public_models import (
     PublicVersionResponse,
 )
 
-public_v1_router = APIRouter(prefix="/v1")
-
 
 def require_public_auth(
-    x_rapidapi_key: str | None = Header(default=None, alias="X-RapidAPI-Key"),
+    # FastAPI maps "X-RapidAPI-Key" -> x_rapidapi_key automatically (case-insensitive).
+    x_rapidapi_key: str | None = Header(default=None),
+    # Optional local testing header
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> None:
     """
     Public/RapidAPI auth strategy:
     - If PLC_PUBLIC_ALLOW_ANON=1 -> allow without header (local dev only).
     - Otherwise require a key header:
-        * X-RapidAPI-Key (RapidAPI)
-        * X-API-Key (local testing)
-    - If PLC_PUBLIC_API_KEY is set, we validate against it.
-      If not set, we only require presence (RapidAPI gateway enforces subscription).
+        * X-RapidAPI-Key (RapidAPI gateway injects this)
+        * X-API-Key (optional local testing)
+    - If PLC_PUBLIC_API_KEY is set, validate against it.
+      If not set, only require presence (RapidAPI gateway enforces subscription).
     """
     if str(os.environ.get("PLC_PUBLIC_ALLOW_ANON", "")).strip() == "1":
         return
@@ -47,12 +47,19 @@ def require_public_auth(
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
-@public_v1_router.get("/health", response_model=PublicHealthResponse, dependencies=[Depends(require_public_auth)])
+# Apply auth ONCE for all /v1/* endpoints
+public_v1_router = APIRouter(
+    prefix="/v1",
+    dependencies=[Depends(require_public_auth)],
+)
+
+
+@public_v1_router.get("/health", response_model=PublicHealthResponse)
 def health() -> dict[str, Any]:
     return {"status": "ok", "mode": "public", "version": "1.0.0"}
 
 
-@public_v1_router.get("/version", response_model=PublicVersionResponse, dependencies=[Depends(require_public_auth)])
+@public_v1_router.get("/version", response_model=PublicVersionResponse)
 def version() -> dict[str, Any]:
     return {"name": "Ledger Normalization API", "version": "1.0.0", "breaking": False}
 
@@ -115,7 +122,6 @@ def _model_to_dict(m: Any) -> dict[str, Any]:
 @public_v1_router.post(
     "/bills/normalize",
     response_model=BillsNormalizeResponse,
-    dependencies=[Depends(require_public_auth)],
 )
 def bills_normalize(req: BillsNormalizeRequest) -> dict[str, Any]:
     normalized: list[dict[str, Any]] = []
@@ -151,7 +157,6 @@ def bills_normalize(req: BillsNormalizeRequest) -> dict[str, Any]:
 @public_v1_router.post(
     "/bills/analyze",
     response_model=BillsAnalyzeResponse,
-    dependencies=[Depends(require_public_auth)],
 )
 def bills_analyze(req: BillsAnalyzeRequest) -> dict[str, Any]:
     ref = req.reference_date or date.today()
@@ -223,7 +228,6 @@ def bills_analyze(req: BillsAnalyzeRequest) -> dict[str, Any]:
 @public_v1_router.post(
     "/ledger/summarize",
     response_model=LedgerSummarizeResponse,
-    dependencies=[Depends(require_public_auth)],
 )
 def ledger_summarize(req: LedgerSummarizeRequest) -> dict[str, Any]:
     norm = bills_normalize(BillsNormalizeRequest(bills=req.bills)).get("normalized", [])
