@@ -21,8 +21,8 @@ from api.public_models import (
 
 
 def require_public_auth(
-    # FastAPI maps "X-RapidAPI-Key" -> x_rapidapi_key automatically (case-insensitive).
-    x_rapidapi_key: str | None = Header(default=None),
+    # Explicit alias so there's zero ambiguity:
+    x_rapidapi_key: str | None = Header(default=None, alias="X-RapidAPI-Key"),
     # Optional local testing header
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> None:
@@ -119,10 +119,7 @@ def _model_to_dict(m: Any) -> dict[str, Any]:
     return dict(m) if isinstance(m, dict) else {}
 
 
-@public_v1_router.post(
-    "/bills/normalize",
-    response_model=BillsNormalizeResponse,
-)
+@public_v1_router.post("/bills/normalize", response_model=BillsNormalizeResponse)
 def bills_normalize(req: BillsNormalizeRequest) -> dict[str, Any]:
     normalized: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -154,10 +151,7 @@ def bills_normalize(req: BillsNormalizeRequest) -> dict[str, Any]:
     return {"normalized": normalized, "warnings": warnings}
 
 
-@public_v1_router.post(
-    "/bills/analyze",
-    response_model=BillsAnalyzeResponse,
-)
+@public_v1_router.post("/bills/analyze", response_model=BillsAnalyzeResponse)
 def bills_analyze(req: BillsAnalyzeRequest) -> dict[str, Any]:
     ref = req.reference_date or date.today()
 
@@ -180,11 +174,9 @@ def bills_analyze(req: BillsAnalyzeRequest) -> dict[str, Any]:
 
         if isinstance(due_day, int) and 1 <= due_day <= 31:
             try:
-                # Use reference month/year
                 if due_day <= 28:
                     due_date = date(ref.year, ref.month, due_day)
                 else:
-                    # last day of month approximation for 29-31
                     next_month = date(ref.year + (ref.month // 12), ((ref.month % 12) + 1), 1)
                     due_date = next_month - timedelta(days=1)
             except Exception:
@@ -225,10 +217,7 @@ def bills_analyze(req: BillsAnalyzeRequest) -> dict[str, Any]:
     return {"summary": _model_to_dict(summary), "bills": analyzed}
 
 
-@public_v1_router.post(
-    "/ledger/summarize",
-    response_model=LedgerSummarizeResponse,
-)
+@public_v1_router.post("/ledger/summarize", response_model=LedgerSummarizeResponse)
 def ledger_summarize(req: LedgerSummarizeRequest) -> dict[str, Any]:
     norm = bills_normalize(BillsNormalizeRequest(bills=req.bills)).get("normalized", [])
 
