@@ -1,22 +1,62 @@
-from __future__ import annotations
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
-import os
+# -------------------------------------------------
+# App setup
+# -------------------------------------------------
 
-from fastapi import FastAPI
+app = FastAPI(
+    title="Ledger Normalization API",
+    version="1.0.0",
+)
 
-from api.public_router import public_v1_router
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-APP_NAME = "Ledger Normalization API"
-APP_VERSION = "1.0.0"
+# -------------------------------------------------
+# REQUIRED FOR RAPIDAPI GATEWAY
+# -------------------------------------------------
 
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "service": "ledger-normalization-api",
+        "gateway": "ready",
+    }
 
-def create_app() -> FastAPI:
-    app = FastAPI(title=APP_NAME, version=APP_VERSION)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-    # Public (RapidAPI) router only
-    app.include_router(public_v1_router)
+# -------------------------------------------------
+# EXISTING API ROUTES (KEEP /v1 PREFIX)
+# -------------------------------------------------
 
-    return app
+@app.get("/v1/health")
+def v1_health():
+    return {"status": "ok"}
 
+@app.post("/v1/normalize")
+def normalize(
+    payload: dict,
+    x_rapidapi_key: Optional[str] = Header(None),
+):
+    # RapidAPI ALWAYS injects this header when gateway is working
+    if not x_rapidapi_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing X-RapidAPI-Key",
+        )
 
-app = create_app()
+    # Stub response (replace with your real logic if needed)
+    return {
+        "normalized": True,
+        "input": payload,
+    }
