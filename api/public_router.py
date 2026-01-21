@@ -21,44 +21,36 @@ from api.public_models import (
 
 
 def require_public_auth(
-    # RapidAPI gateway injects these:
-    # - X-RapidAPI-Key (consumer key)
-    # - X-RapidAPI-Host (the RapidAPI host for your API)
+    # RapidAPI maps "X-RapidAPI-Key" -> x_rapidapi_key automatically (case-insensitive).
     x_rapidapi_key: str | None = Header(default=None),
-    x_rapidapi_host: str | None = Header(default=None),
-    # Optional: your own private backdoor for direct calls (ONLY if you set PLC_PUBLIC_API_KEY)
+    # Optional local/provider testing header
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ) -> None:
     """
-    RapidAPI-only auth strategy (recommended for marketplace):
-    - If PLC_PUBLIC_ALLOW_ANON=1 -> allow without headers (dev only).
-    - Otherwise:
-        ✅ Allow ONLY if request came through RapidAPI gateway:
-           requires BOTH X-RapidAPI-Key and X-RapidAPI-Host.
-        ✅ Optionally allow direct/internal calls ONLY if PLC_PUBLIC_API_KEY is set
-           and the request provides X-API-Key matching it.
-        ❌ Block everything else.
+    Public/RapidAPI auth strategy (production-safe):
+
+    1) If PLC_PUBLIC_ALLOW_ANON=1 -> allow without header (dev only).
+    2) RapidAPI path: require ONLY X-RapidAPI-Key (RapidAPI enforces subscription).
+    3) Optional provider direct-call path: allow X-API-Key if it matches PLC_PUBLIC_API_KEY.
+    4) Otherwise block.
     """
-    # Dev-only bypass
     if str(os.environ.get("PLC_PUBLIC_ALLOW_ANON", "")).strip() == "1":
         return
 
-    # 1) RapidAPI gateway path: require BOTH headers
-    rk = (x_rapidapi_key or "").strip()
-    rh = (x_rapidapi_host or "").strip()
-    if rk and rh:
+    # 2) RapidAPI gateway path: key is enough
+    if (x_rapidapi_key or "").strip():
         return
 
-    # 2) Optional internal direct-call path (ONLY if you set PLC_PUBLIC_API_KEY)
+    # 3) Optional direct/provider testing path
     expected = str(os.environ.get("PLC_PUBLIC_API_KEY", "")).strip()
     provided_internal = (x_api_key or "").strip()
     if expected and provided_internal == expected:
         return
 
-    # 3) Block everything else
+    # 4) Block everything else
     raise HTTPException(
         status_code=401,
-        detail="Unauthorized (RapidAPI-only). Use RapidAPI gateway or a valid X-API-Key if enabled.",
+        detail="Unauthorized. Use RapidAPI gateway (X-RapidAPI-Key) or a valid X-API-Key if enabled.",
     )
 
 
@@ -256,8 +248,4 @@ def ledger_summarize(req: LedgerSummarizeRequest) -> dict[str, Any]:
         totals[cat] = round(totals.get(cat, 0.0) + amt, 2)
         projected_cash_flow -= amt
 
-    return {
-        "period": req.period,
-        "totals": totals,
-        "projected_cash_flow": round(projected_cash_flow, 2),
-    }
+    return {"period": req.period, "totals": totals, "projected_cash_flow": round(projected_cash_flow, 2)}
