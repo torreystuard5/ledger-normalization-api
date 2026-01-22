@@ -26,17 +26,6 @@ def _get_provider_secret() -> Optional[str]:
 def _is_rapidapi_request(request: Request) -> bool:
     """
     Detect requests coming from RapidAPI's gateway/proxy.
-
-    RapidAPI typically forwards:
-      - X-RapidAPI-Key
-      - X-RapidAPI-Host
-      - and may include X-RapidAPI-Proxy-Secret (provider-side firewall feature)
-
-    We treat presence of RapidAPI auth headers as "RapidAPI traffic" so the
-    RapidAPI Console (and your customers) can work without requiring
-    X-Provider-Secret.
-
-    Anything NOT detected as RapidAPI traffic must provide X-Provider-Secret.
     """
     h = request.headers
 
@@ -56,14 +45,15 @@ def _load_public_router() -> Tuple[object, str]:
     Load the FastAPI APIRouter from api.public_router regardless of what
     the variable is named inside that file.
 
-    Supported exported names:
+    Supported exported names (we try all of these):
       - router
       - public_router
       - api_router
+      - public_v1_router   (your repo’s current name)
     """
     mod = importlib.import_module("api.public_router")
 
-    for name in ("router", "public_router", "api_router"):
+    for name in ("router", "public_router", "api_router", "public_v1_router"):
         candidate = getattr(mod, name, None)
         if candidate is not None:
             return candidate, name
@@ -71,7 +61,7 @@ def _load_public_router() -> Tuple[object, str]:
     available = [k for k in dir(mod) if not k.startswith("_")]
     raise RuntimeError(
         "api.public_router loaded, but no APIRouter export found. "
-        "Expected one of: router, public_router, api_router. "
+        "Expected one of: router, public_router, api_router, public_v1_router. "
         "Exports found: %s" % (available,)
     )
 
