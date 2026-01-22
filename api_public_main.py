@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import os
+from typing import Optional, Tuple
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +15,7 @@ PROVIDER_SECRET_ENV = "PROVIDER_SECRET"
 PROVIDER_SECRET_HEADER = "X-Provider-Secret"
 
 
-def _get_provider_secret() -> str | None:
+def _get_provider_secret() -> Optional[str]:
     val = os.getenv(PROVIDER_SECRET_ENV)
     if not val:
         return None
@@ -50,7 +51,7 @@ def _is_rapidapi_request(request: Request) -> bool:
     return False
 
 
-def _load_public_router():
+def _load_public_router() -> Tuple[object, str]:
     """
     Load the FastAPI APIRouter from api.public_router regardless of what
     the variable is named inside that file.
@@ -71,7 +72,7 @@ def _load_public_router():
     raise RuntimeError(
         "api.public_router loaded, but no APIRouter export found. "
         "Expected one of: router, public_router, api_router. "
-        f"Exports found: {available}"
+        "Exports found: %s" % (available,)
     )
 
 
@@ -125,7 +126,7 @@ async def auth_gate(request: Request, call_next):
         # Fail closed if misconfigured
         return JSONResponse(
             status_code=503,
-            content={"detail": f"Server misconfigured: {PROVIDER_SECRET_ENV} is not set."},
+            content={"detail": "Server misconfigured: %s is not set." % PROVIDER_SECRET_ENV},
         )
 
     provided = request.headers.get(PROVIDER_SECRET_HEADER, "")
