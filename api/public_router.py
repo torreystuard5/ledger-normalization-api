@@ -96,7 +96,7 @@ def _normalize(b: BillIn, idx: int) -> Dict[str, Any]:
 # -----------------------------
 # Routes
 # -----------------------------
-@router.post("/bills/normalize", response_model=BillsNormalizeResponse)
+@router.post("/v1/bills/normalize", response_model=BillsNormalizeResponse)
 def bills_normalize(
     payload: BillsNormalizeRequest,
     x_rapidapi_key: Optional[str] = Header(default=None, alias="X-RapidAPI-Key"),
@@ -106,7 +106,7 @@ def bills_normalize(
     return {"normalized": normalized}
 
 
-@router.post("/ledger/summarize", response_model=LedgerSummarizeResponse)
+@router.post("/v1/ledger/summarize", response_model=LedgerSummarizeResponse)
 def ledger_summarize(
     payload: LedgerSummarizeRequest,
     x_rapidapi_key: Optional[str] = Header(default=None, alias="X-RapidAPI-Key"),
